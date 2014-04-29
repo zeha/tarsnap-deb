@@ -1,0 +1,122 @@
+tarsnap (1.0.35) unstable; urgency=medium
+
+  * New version of tarsnap fixes a networking bug, introduced by the
+    addition of IPv6 support, which can cause tarsnap to crash (segment
+    violation or bus error) during network glitches / outages.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Thu, 25 Jul 2013 09:20:55 +0000
+tarsnap (1.0.34) unstable; urgency=low
+
+  * New version of tarsnap brings IPv6 support; support for platforms with
+    mandatory struct alignment (e.g., ARM OABI); and greater resilience
+    against network glitches when tarsnap first contacts the server.
+  * A bug causing tarsnap to crash when reading certain corrupt key files
+    on 64-bit platforms is fixed.
+  * Terminal settings are now restored if tarsnap is killed with ^C while
+    reading an account password or a keyfile passphrase.
+  * A large amount of library code has been restructured into an open
+    source "libcperciva" library.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Sat, 6 Jul 2013 21:33:46 +0000
+tarsnap (1.0.33) unstable; urgency=low
+
+  * New version of tarsnap brings reduced memory usage on systems with a
+    large amount of stored data; faster operation for --fsck and when
+    deleting or printing statistics for multiple archives; and corrects
+    a bug in the handling of the --newerXXX option.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Wed, 1 Aug 2012 23:52:10 +0000
+tarsnap (1.0.32) unstable; urgency=low
+
+  * New version of tarsnap fixes a bug which made the --nodump option
+    inoperative.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Sun, 12 Feb 2012 02:18:25 +0000
+tarsnap (1.0.31) unstable; urgency=low
+
+  * New version of tarsnap fixes security vulnerabilities relating to key
+    file creation on multi-user systems, plus several minor enhancements
+    and bug fixes.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Thu, 17 Nov 2011 10:52:59 +0000
+tarsnap (1.0.30) unstable; urgency=low
+
+  * New version of tarsnap brings many minor bug fixes.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Tue, 16 Aug 2011 20:25:12 +0000
+tarsnap (1.0.29) unstable; urgency=low
+
+  * New version of tarsnap adds tarsnap-recrypt utility for re-encrypting
+    stored data.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Tue, 1 Feb 2011 21:28:44 +0000
+tarsnap (1.0.28) unstable; urgency=critical
+
+  * Bug fix in encryption code.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Mon, 17 Jan 2011 09:42:12 +0000
+tarsnap (1.0.27) unstable; urgency=low
+
+  * New version of tarsnap brings several new features.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Mon, 7 Jun 2010 04:19:32 +0000
+tarsnap (1.0.26) unstable; urgency=low
+
+  * New version of tarsnap changes client-server protocol in order to reduce
+    "connection lost" warnings, fixes a serious bug in the --maxbw-rate
+    options, improves documentation, and fixes a few other minor bugs.
+  * Debian installation rules fixed to create Tarsnap cache directory with
+    the correct (0700) permissions.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Thu, 24 Dec 2009 06:56:51 +0000
+tarsnap (1.0.25) unstable; urgency=low
+
+  * New version of tarsnap makes it possible for more options to be specified
+    via configuration files, and for options set in configuration files to be
+    unset at the command line.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Fri, 10 Jul 2009 10:50:12 +0000
+tarsnap (1.0.24) unstable; urgency=low
+
+  * New version of tarsnap updates underlying libarchive version to 2.7.0
+    and reorganizes the source code and build process.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Sun, 21 Jun 2009 02:52:31 +0000
+tarsnap (1.0.23) unstable; urgency=low
+
+  * New version of tarsnap adds new features, improves resilience in the
+    presence of transient network errors, and fixes minor bugs.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Wed, 10 Jun 2009 12:21:56 +0000
+tarsnap (1.0.22) unstable; urgency=low
+
+  * New version of tarsnap adds support for passphrase-protected key files
+    using the scrypt key derivation function.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Tue, 3 Jun 2009 23:21:44 +0000
+tarsnap (1.0.21) unstable; urgency=critical (low for users of tarsnap 1.0.19 or earlier)
+
+  * New version of tarsnap fixes serious bug in the chunk cache when a
+    checkpoint is created in the middle of a file.
+
+ -- Colin Percival <cperciva@tarsnap.com>  Thu, 5 Mar 2009 01:12:50 +0000
+tarsnap (1.0.20) unstable; urgency=low
+
+  * Fixed typo in sed code for changing default cachedir.
+  * Removed unnecessary dependency on autotools-dev.
+  * Added dependency on libbz2-dev (not required, but tarsnap will take
+    advantage of libbz2 if it is present).
+  * Removed unnecessary CONFIGDIR= from ./configure invocation (the
+    autoconf logic handles this already).
+
+ -- Colin Percival <cperciva@tarsnap.com>  Sat, 31 Jan 2009 22:54:01 +0000
+tarsnap (1.0.19-1) unstable; urgency=low
+
+  * Fixed default config file location and cachedir.
+
+ -- Mads Sulau Joergensen <mads@sulau.dk>  Sun, 18 Jan 2009 19:48:41 +0100
+tarsnap (1.0.19) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Mads Sulau Joergensen <mads@sulau.dk>  Sun, 18 Jan 2009 14:25:54 +0100

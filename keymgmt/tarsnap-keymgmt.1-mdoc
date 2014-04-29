@@ -1,0 +1,82 @@
+.\" Copyright 2008, 2009 Colin Percival
+.\" All rights reserved.
+.\"
+.Dd June 3, 2009
+.Dt TARSNAP-KEYMGMT 1
+.Os
+.Sh NAME
+.Nm tarsnap-keymgmt
+.Nd generate subsets of
+.Xr tarsnap 1
+key files
+.Sh SYNOPSIS
+.Nm
+.Fl -outkeyfile Ar new-key-file
+.Op Fl r
+.Op Fl w
+.Op Fl d
+.Op Fl -nuke
+.Op Fl -passphrased
+.Op Fl -passphrase-mem Ar maxmem
+.Ar key-file ...
+.Sh DESCRIPTION
+.Nm
+reads the provided key files and writes a new key file
+containing only the keys required for the operations
+specified via the
+.Fl r
+(list and extract archives),
+.Fl w
+(write archives),
+.Fl d
+(delete archives), and
+.Fl -nuke
+flags.
+Note that
+.Fl d
+implies
+.Fl r
+since it is impossible to delete an individual archive without
+being able to read it; while a key file generated with
+.Fl -nuke
+can be used to delete all the archives stored, but not individual
+archives.
+.Pp
+The
+.Fl -recover
+command requires either (1)
+.Fl d
+(archive deleting), (2)
+.Fl w
+(archive creating), or (3)
+.Fl -nuke
+keys.
+The
+.Fl -fsck
+command requires either (1) both
+.Fl w
+(archive writing) and
+.Fl r
+(archive reading) keys, or (2)
+.Fl d
+(archive deleting) keys.
+The
+.Fl -fsck-prune
+command requires
+.Fl d
+(archive deleting) keys, since it needs to be able to delete
+corrupted archives.
+.Pp
+If the
+.Fl -passphrased
+option is specified, the user will be prompted to enter a passphrase (twice)
+to be used to encrypt the key file.
+.Pp
+If the
+.Fl -passphrase-mem Ar maxmem
+option is specified, a maximum of
+.Ar maxmem
+bytes of RAM will be used in the scrypt key derivation function to
+encrypt the key file; it may be necessary to set this option if a key
+file is being created on a system with far more RAM than the system
+on which the key file will be used.
