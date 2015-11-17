@@ -1,3 +1,11 @@
+tarsnap (1.0.36.1-1) unstable; urgency=medium
+
+  * [9f0771b] Imported Upstream version 1.0.36.1
+  * [55a83ce] Bump Standards-Version to 3.9.6
+  * [2c8b36e] wrap-and-sort on debian directory
+
+ -- Michael Prokop <mika@grml.org>  Tue, 17 Nov 2015 22:06:43 +0100
+
 tarsnap (1.0.35-1) unstable; urgency=low
 
   * Initial build.
