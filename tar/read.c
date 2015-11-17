@@ -52,6 +52,9 @@ __FBSDID("$FreeBSD: src/usr.bin/tar/read.c,v 1.40 2008/08/21 06:41:14 kientzle E
 #ifdef HAVE_GRP_H
 #include <grp.h>
 #endif
+#if HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
 #ifdef HAVE_LIMITS_H
 #include <limits.h>
 #endif
@@ -129,11 +132,11 @@ read_archive(struct bsdtar *bsdtar, char mode)
 		include_from_file(bsdtar, bsdtar->names_from_file);
 
 	a = archive_read_new();
-	archive_read_support_compression_all(a);
-	archive_read_support_format_all(a);
+	archive_read_support_compression_none(a);
+	archive_read_support_format_tar(a);
 	if (archive_read_open_multitape(a, bsdtar->machinenum,
 	    bsdtar->tapenames[0]) == NULL)
-		bsdtar_errc(bsdtar, 1, 0, archive_error_string(a));
+		bsdtar_errc(bsdtar, 1, 0, "%s", archive_error_string(a));
 
 	do_chdir(bsdtar);
 
@@ -395,12 +398,12 @@ list_item_verbose(struct bsdtar *bsdtar, FILE *out, struct archive_entry *entry)
 	tim = (time_t)st->st_mtime;
 #if defined(_WIN32) && !defined(__CYGWIN__)
 	/* Windows' strftime function does not support %e format. */
-	if (abs(tim - now) > (365/2)*86400)
+	if (imaxabs(tim - now) > (365/2)*86400)
 		fmt = bsdtar->day_first ? "%d %b  %Y" : "%b %d  %Y";
 	else
 		fmt = bsdtar->day_first ? "%d %b %H:%M" : "%b %d %H:%M";
 #else
-	if (abs(tim - now) > (365/2)*86400)
+	if (imaxabs(tim - now) > (365/2)*86400)
 		fmt = bsdtar->day_first ? "%e %b  %Y" : "%b %e  %Y";
 	else
 		fmt = bsdtar->day_first ? "%e %b %H:%M" : "%b %e %H:%M";

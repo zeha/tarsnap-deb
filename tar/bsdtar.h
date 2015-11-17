@@ -53,6 +53,7 @@ struct bsdtar {
 	ino_t		  cachedir_ino;
 	int		  cachecrunch; /* --lowmem / --verylowmem */
 	time_t		  snaptime; /* --snaptime */
+	time_t		  creationtime; /* --creationtime */
 	char		 *pending_chdir; /* -C dir */
 	const char	 *names_from_file; /* -T file */
 	time_t		  newer_ctime_sec; /* --newer/--newer-than */
@@ -105,6 +106,7 @@ struct bsdtar {
 	int		  option_no_config_include_set;
 	int		  option_quiet;
 	int		  option_quiet_set;
+	int		  option_retry_forever_set;
 	int		  option_insane_filesystems;
 	int		  option_insane_filesystems_set;
 	const char	**configfiles;		/* --configfile */
@@ -162,6 +164,7 @@ enum {
 	OPTION_CHECKPOINT_BYTES,
 	OPTION_CHROOT,
 	OPTION_CONFIGFILE,
+	OPTION_CREATIONTIME,
 	OPTION_DISK_PAUSE,
 	OPTION_DRYRUN,
 	OPTION_EXCLUDE,
@@ -199,6 +202,7 @@ enum {
 	OPTION_NO_NODUMP,
 	OPTION_NO_PRINT_STATS,
 	OPTION_NO_QUIET,
+	OPTION_NO_RETRY_FOREVER,
 	OPTION_NO_SAME_OWNER,
 	OPTION_NO_SAME_PERMISSIONS,
 	OPTION_NO_SNAPTIME,
@@ -214,6 +218,7 @@ enum {
 	OPTION_RECOVER,
 	OPTION_RECOVER_DELETE,	/* Operation mode, not a real option */
 	OPTION_RECOVER_WRITE,	/* Operation mode, not a real option */
+	OPTION_RETRY_FOREVER,
 	OPTION_QUIET,
 	OPTION_SNAPTIME,
 	OPTION_STORE_ATIME,

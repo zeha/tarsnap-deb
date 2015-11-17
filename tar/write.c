@@ -146,6 +146,16 @@ getdevino(struct archive * a, const char * path, dev_t * d, ino_t * i)
 {
 	struct stat sb;
 
+	if (path == NULL) {
+		/* 
+		 * Return bogus values to avoid comparing against
+		 * uninitialized data later on.
+		 */
+		*d = -1;
+		*i = -1;
+		return 0;
+	}
+
 	if (stat(path, &sb)) {
 		archive_set_error(a, errno, "%s", path);
 		return (-1);
@@ -244,9 +254,20 @@ void
 tarsnap_mode_c(struct bsdtar *bsdtar)
 {
 	struct archive *a;
+	size_t i;
 
 	if (*bsdtar->argv == NULL && bsdtar->names_from_file == NULL)
 		bsdtar_errc(bsdtar, 1, 0, "no files or directories specified");
+
+	for (i = 0; bsdtar->argv[i] != NULL; i++) {
+		if (bsdtar->argv[i][0] == '-' && bsdtar->argv[i][1] == '-') {
+			bsdtar_warnc(bsdtar, 0,
+			    "List of objects to archive includes '%s'."
+			    "  This might not be what you intended.",
+			    bsdtar->argv[i]);
+			break;
+		}
+	}
 
 	a = archive_write_new();
 
@@ -260,9 +281,10 @@ tarsnap_mode_c(struct bsdtar *bsdtar)
 	bsdtar->write_cookie = archive_write_open_multitape(a,
 	    bsdtar->machinenum, bsdtar->cachedir, bsdtar->tapenames[0],
 	    bsdtar->argc_orig, bsdtar->argv_orig,
-	    bsdtar->option_print_stats, bsdtar->option_dryrun);
+	    bsdtar->option_print_stats, bsdtar->option_dryrun,
+	    bsdtar->creationtime);
 	if (bsdtar->write_cookie == NULL)
-		bsdtar_errc(bsdtar, 1, 0, archive_error_string(a));
+		bsdtar_errc(bsdtar, 1, 0, "%s", archive_error_string(a));
 
 	/*
 	 * Remember the device and inode numbers of the cache directory, so
@@ -270,10 +292,10 @@ tarsnap_mode_c(struct bsdtar *bsdtar)
 	 */
 	if (getdevino(a, bsdtar->cachedir,
 	    &bsdtar->cachedir_dev, &bsdtar->cachedir_ino))
-		bsdtar_errc(bsdtar, 1, 0, archive_error_string(a));
+		bsdtar_errc(bsdtar, 1, 0, "%s", archive_error_string(a));
 
-	/* Read the chunkification cache. */
-	if (bsdtar->cachecrunch < 2) {
+	/* If the chunkification cache is enabled, read it. */
+	if ((bsdtar->cachecrunch < 2) && (bsdtar->cachedir != NULL)) {
 		bsdtar->chunk_cache = ccache_read(bsdtar->cachedir);
 		if (bsdtar->chunk_cache == NULL)
 			bsdtar_errc(bsdtar, 1, errno, "Error reading cache");
@@ -838,7 +860,7 @@ write_hierarchy(struct bsdtar *bsdtar, struct archive *a, const char *path)
 		    entry, -1, st);
 		if (r != ARCHIVE_OK)
 			bsdtar_warnc(bsdtar, archive_errno(bsdtar->diskreader),
-			    archive_error_string(bsdtar->diskreader));
+			    "%s", archive_error_string(bsdtar->diskreader));
 		if (r < ARCHIVE_WARN)
 			continue;
 
@@ -856,18 +878,13 @@ write_hierarchy(struct bsdtar *bsdtar, struct archive *a, const char *path)
 			continue;
 #endif
 
-#if defined(EXT2_IOC_GETFLAGS) && defined(EXT2_NODUMP_FL)
+#if defined(EXT2_NODUMP_FL)
 		/* Linux uses ioctl to read flags. */
 		if (bsdtar->option_honor_nodump) {
-			int fd = open(tree_current_access_path(tree),
-			    O_RDONLY | O_NONBLOCK);
-			if (fd >= 0) {
-				unsigned long fflags;
-				int r = ioctl(fd, EXT2_IOC_GETFLAGS, &fflags);
-				close(fd);
-				if (r >= 0 && (fflags & EXT2_NODUMP_FL))
-					continue;
-			}
+			unsigned long fflags, dummy;
+			archive_entry_fflags(entry, &fflags, &dummy);
+			if (fflags & EXT2_NODUMP_FL)
+				continue;
 		}
 #endif
 
@@ -976,8 +993,9 @@ write_entry_backend(struct bsdtar *bsdtar, struct archive *a,
 	 * the chunkification cache to find the entry for the file (if one
 	 * already exists) and tell us if it can provide the entire file.
 	 */
-	if ((st != NULL) && S_ISREG(st->st_mode) && rpath != NULL &&
-	    archive_entry_size(entry) > 0 && bsdtar->cachecrunch < 2) {
+	if ((st != NULL) && S_ISREG(st->st_mode) && (rpath != NULL) &&
+	    (archive_entry_size(entry) > 0) && (bsdtar->cachecrunch < 2) &&
+	    (bsdtar->chunk_cache != NULL)) {
 		cce = ccache_entry_lookup(bsdtar->chunk_cache, rpath, st,
 		    bsdtar->write_cookie, &filecached);
 	}

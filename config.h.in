@@ -468,9 +468,6 @@
 /* Define to 1 if `totalram' is a member of `struct sysinfo'. */
 #undef HAVE_STRUCT_SYSINFO_TOTALRAM
 
-/* Define to 1 if the OS has a hw.usermem sysctl */
-#undef HAVE_SYSCTL_HW_USERMEM
-
 /* Define to 1 if you have the `sysinfo' function. */
 #undef HAVE_SYSINFO
 
@@ -514,6 +511,9 @@
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/sysctl.h> header file. */
+#undef HAVE_SYS_SYSCTL_H
 
 /* Define to 1 if you have the <sys/sysinfo.h> header file. */
 #undef HAVE_SYS_SYSINFO_H

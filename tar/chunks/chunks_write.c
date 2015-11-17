@@ -68,8 +68,12 @@ chunks_write_start(const char * cachepath, STORAGE_W * S, size_t maxchunksize,
 	C->dryrun = dryrun;
 
 	/* Create a copy of the path. */
-	if ((C->path = strdup(cachepath)) == NULL)
-		goto err2;
+	if (cachepath == NULL) {
+		C->path = NULL;
+	} else {
+		if ((C->path = strdup(cachepath)) == NULL)
+			goto err2;
+	}
 
 	/* Read the existing chunk directory (if one exists). */
 	if ((C->HT = chunks_directory_read(cachepath, &C->dir,
@@ -165,7 +169,7 @@ chunks_write_chunk(CHUNKS_W * C, const uint8_t * hash,
 
 	/* ... and insert it into the hash table. */
 	if (rwhashtab_insert(C->HT, ch))
-		goto err0;
+		goto err1;
 
 	/* Update statistics. */
 	chunks_stats_add(&C->stats_total, ch->len, zlen, 1);
@@ -176,6 +180,8 @@ chunks_write_chunk(CHUNKS_W * C, const uint8_t * hash,
 	/* Success! */
 	return (zlen);
 
+err1:
+	free(ch);
 err0:
 	/* Failure! */
 	return (-1);
