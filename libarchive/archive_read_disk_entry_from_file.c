@@ -36,6 +36,9 @@ __FBSDID("$FreeBSD$");
 #ifdef HAVE_SYS_EXTATTR_H
 #include <sys/extattr.h>
 #endif
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
@@ -54,8 +57,25 @@ __FBSDID("$FreeBSD$");
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
 #endif
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
 #ifdef HAVE_LIMITS_H
 #include <limits.h>
+#endif
+#ifdef HAVE_LINUX_FS_H
+#include <linux/fs.h>	/* for Linux file flags */
+#endif
+/*
+ * Some Linux distributions have both linux/ext2_fs.h and ext2fs/ext2_fs.h.
+ * As the include guards don't agree, the order of include is important.
+ */
+#ifdef HAVE_LINUX_EXT2_FS_H
+#include <linux/ext2_fs.h>	/* for Linux file flags */
+#endif
+#if defined(HAVE_EXT2FS_EXT2_FS_H) && !defined(__CYGWIN__)
+/* This header exists but is broken on Cygwin. */
+#include <ext2fs/ext2_fs.h>
 #endif
 #ifdef HAVE_WINDOWS_H
 #include <windows.h>
@@ -102,7 +122,7 @@ archive_read_disk_entry_from_file(struct archive *_a,
 	 * open file descriptor which we can use in the subsequent lookups. */
 	if ((S_ISREG(st->st_mode) || S_ISDIR(st->st_mode))) {
 		if (fd < 0)
-			fd = open(pathname, O_RDONLY | O_NONBLOCK);
+			fd = open(path, O_RDONLY | O_NONBLOCK);
 		if (fd >= 0) {
 			unsigned long stflags;
 			int r = ioctl(fd, EXT2_IOC_GETFLAGS, &stflags);
@@ -336,6 +356,7 @@ setup_xattr(struct archive_read_disk *a,
 		size = getxattr(accpath, name, value, size);
 
 	if (size == -1) {
+		free(value);
 		archive_set_error(&a->archive, errno,
 		    "Couldn't read extended attribute");
 		return (ARCHIVE_WARN);

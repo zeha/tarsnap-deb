@@ -83,6 +83,13 @@ void * elasticarray_get(struct elasticarray *, size_t, size_t);
 void elasticarray_free(struct elasticarray *);
 
 /**
+ * elasticarray_export(EA, buf, nrec, reclen):
+ * Return the data in the elastic array ${EA} as a buffer ${buf} containing
+ * ${nrec} records of length ${reclen}.  Free the elastic array ${EA}.
+ */
+int elasticarray_export(struct elasticarray *, void **, size_t *, size_t);
+
+/**
  * ELASTICARRAY_DECL(type, prefix, rectype):
  * Declare the type ${type} and the following functions:
  * ${type} ${prefix}_init(size_t nrec);
@@ -101,7 +108,7 @@ void elasticarray_free(struct elasticarray *);
 		struct elasticarray * EA;				\
 									\
 		EA = elasticarray_init(nrec, sizeof(rectype));		\
-		return ((struct  prefix##_struct *)EA);			\
+		return ((struct prefix##_struct *)EA);			\
 	}								\
 	static inline int						\
 	prefix##_resize(struct prefix##_struct * EA, size_t nrec)	\
@@ -117,7 +124,7 @@ void elasticarray_free(struct elasticarray *);
 	}								\
 	static inline int						\
 	prefix##_append(struct prefix##_struct * EA,			\
-	    const void * buf, size_t nrec)				\
+	    rectype const * buf, size_t nrec)				\
 	{								\
 		return (elasticarray_append((struct elasticarray *)EA,	\
 		    buf, nrec, sizeof(rectype)));			\
@@ -137,16 +144,23 @@ void elasticarray_free(struct elasticarray *);
 	static inline rectype *						\
 	prefix##_get(struct prefix##_struct * EA, size_t pos)		\
 	{								\
-		void * rec;						\
+		rectype * rec;						\
 									\
 		rec = elasticarray_get((struct elasticarray *)EA,	\
 		    pos, sizeof(rectype));				\
-		return ((rectype *)rec);				\
+		return (rec);						\
 	}								\
 	static inline void						\
 	prefix##_free(struct prefix##_struct * EA)			\
 	{								\
 		elasticarray_free((struct elasticarray *)EA);		\
+	}								\
+	static inline int						\
+	prefix##_export(struct prefix##_struct * EA, rectype ** buf,	\
+	    size_t * nrec)						\
+	{								\
+		return (elasticarray_export((struct elasticarray *)EA,	\
+		    (void **)buf, nrec, sizeof(rectype)));		\
 	}								\
 	typedef struct prefix##_struct * type
 

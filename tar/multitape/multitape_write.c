@@ -355,14 +355,14 @@ err0:
 
 /**
  * writetape_open(machinenum, cachedir, tapename, argc, argv, printstats,
- *     dryrun):
+ *     dryrun, creationtime):
  * Create a tape with the given name, and return a cookie which can be used
  * for accessing it.  The argument vector must be long-lived.
  */
 TAPE_W *
 writetape_open(uint64_t machinenum, const char * cachedir,
     const char * tapename, int argc, char ** argv, int printstats,
-    int dryrun)
+    int dryrun, time_t creationtime)
 {
 	struct multitape_write_internal * d;
 	uint8_t lastseq[32];
@@ -382,8 +382,12 @@ writetape_open(uint64_t machinenum, const char * cachedir,
 	/* Copy the tape directory, cache directory, and tape name. */
 	if ((d->tapename = strdup(tapename)) == NULL)
 		goto err1;
-	if ((d->cachedir = strdup(cachedir)) == NULL)
-		goto err2;
+	if (cachedir == NULL) {
+		d->cachedir = NULL;
+	} else {
+		if ((d->cachedir = strdup(cachedir)) == NULL)
+			goto err2;
+	}
 
 	/* Record a pointer to the argument vector. */
 	d->argv = argv;
@@ -399,12 +403,7 @@ writetape_open(uint64_t machinenum, const char * cachedir,
 	}
 
 	/* Record the archive creation time. */
-	/*-
-	 * XXX POSIX is dumb
-	 * XXX Failure is indistinguishable from the valid time (time_t)(-1).
-	 * XXX We resolve this by treating the time (time_t)(-1) as invalid.
-	 */
-	d->ctime = time(NULL);
+	d->ctime = creationtime;
 
 	/* Record whether we should print archive statistics on close. */
 	d->stats_enabled = printstats;
@@ -412,20 +411,20 @@ writetape_open(uint64_t machinenum, const char * cachedir,
 	/* Record whether this is a dry run. */
 	d->dryrun = dryrun;
 
-	/* Make sure ${cachedir} exists. */
-	if (dirutil_needdir(cachedir))
+	/* If we're using a cache, make sure ${cachedir} exists. */
+	if ((cachedir != NULL) && (dirutil_needdir(cachedir)))
 		goto err3;
 
-	/* Lock the cache directory. */
-	if ((d->lockfd = multitape_lock(cachedir)) == -1)
+	/* If we're using a cache, lock the cache directory. */
+	if ((cachedir != NULL) && ((d->lockfd = multitape_lock(cachedir)) == -1))
 		goto err3;
 
 	/* If this isn't a dry run, finish any pending commit. */
 	if ((d->dryrun == 0) && multitape_cleanstate(cachedir, machinenum, 0))
 		goto err4;
 
-	/* Get sequence number. */
-	if (multitape_sequence(cachedir, lastseq))
+	/* If this isn't a dry run, get the sequence number. */
+	if ((d->dryrun == 0) && (multitape_sequence(cachedir, lastseq)))
 		goto err4;
 
 	/* Obtain write cookies from the storage and chunk layers. */

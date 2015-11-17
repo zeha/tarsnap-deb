@@ -5,6 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "insecure_memzero.h"
 #include "warnp.h"
 
 #include "readpass.h"
@@ -12,26 +13,29 @@
 #define MAXPASSLEN 2048
 
 /* Signals we need to block. */
-int badsigs[] = {
+static const int badsigs[] = {
 	SIGALRM, SIGHUP, SIGINT,
 	SIGPIPE, SIGQUIT, SIGTERM,
 	SIGTSTP, SIGTTIN, SIGTTOU
 };
 #define NSIGS sizeof(badsigs)/sizeof(badsigs[0])
 
+/* Highest signal number we care about. */
+#define MAX2(a, b) ((a) > (b) ? (a) : (b))
+#define MAX4(a, b, c, d) MAX2(MAX2(a, b), MAX2(c, d))
+#define MAX8(a, b, c, d, e, f, g, h) MAX2(MAX4(a, b, c, d), MAX4(e, f, g, h))
+#define MAXBADSIG	MAX2(SIGALRM, MAX8(SIGHUP, SIGINT, SIGPIPE, SIGQUIT, \
+			    SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU))
+
 /* Has a signal of this type been received? */
-static volatile sig_atomic_t gotsig[NSIGS];
+static volatile sig_atomic_t gotsig[MAXBADSIG + 1];
 
 /* Signal handler. */
 static void
 handle(int sig)
 {
-	size_t i;
 
-	for (i = 0; i < NSIGS; i++) {
-		if (sig == badsigs[i])
-			gotsig[i] = 1;
-	}
+	gotsig[sig] = 1;
 }
 
 /**
@@ -64,7 +68,7 @@ readpass(char ** passwd, const char * prompt,
 		readfrom = stdin;
 
 	/* We have not received any signals yet. */
-	for (i = 0; i < NSIGS; i++)
+	for (i = 0; i <= MAXBADSIG; i++)
 		gotsig[i] = 0;
 
 	/*
@@ -132,7 +136,7 @@ retry:
 
 	/* If we intercepted a signal, re-issue it. */
 	for (i = 0; i < NSIGS; i++) {
-		if (gotsig[i])
+		if (gotsig[badsigs[i]])
 			raise(badsigs[i]);
 	}
 
@@ -149,16 +153,15 @@ retry:
 	/*
 	 * Zero any stored passwords.  This is not guaranteed to work, since a
 	 * "sufficiently intelligent" compiler can optimize these out due to
-	 * the values not being accessed again; some people try to avoid this
-	 * problem by zeroing buffers via a volatile-casted pointed, but this
-	 * is not sufficient -- it guarantees that *a* buffer is zeroed but
+	 * the values not being accessed again; and even if we outwitted the
+	 * compiler, all we can do is ensure that *a* buffer is zeroed but
 	 * not that it is the only buffer containing the data in question.
 	 * Unfortunately the C standard does not provide any way to mark data
 	 * as "sensitive" in order to prevent extra copies being sprinkled
 	 * around the implementation address space.
 	 */
-	memset(passbuf, 0, MAXPASSLEN);
-	memset(confpassbuf, 0, MAXPASSLEN);
+	insecure_memzero(passbuf, MAXPASSLEN);
+	insecure_memzero(confpassbuf, MAXPASSLEN);
 
 	/* Success! */
 	return (0);
@@ -173,8 +176,8 @@ err2:
 		fclose(readfrom);
 err1:
 	/* Zero any stored passwords. */
-	memset(passbuf, 0, MAXPASSLEN);
-	memset(confpassbuf, 0, MAXPASSLEN);
+	insecure_memzero(passbuf, MAXPASSLEN);
+	insecure_memzero(confpassbuf, MAXPASSLEN);
 
 	/* Failure! */
 	return (-1);

@@ -88,12 +88,12 @@ main(int argc, char **argv)
 			     tok = strtok_r(NULL, ",", &brkb)) {
 				keynum = strtol(tok, &eptr, 0);
 				if ((eptr == tok) ||
-				    (keynum < 0) || (keynum > 32)) {
+				    (keynum < 0) || (keynum > 31)) {
 					warn0("Not a valid key number: %s",
 					    tok);
 					exit(1);
 				}
-				keyswanted |= 1 << keynum;
+				keyswanted |= (uint32_t)(1) << keynum;
 			}
 			argv++; argc--;
 		} else if (strcmp(argv[0], "--passphrase-mem") == 0) {
@@ -123,6 +123,13 @@ main(int argc, char **argv)
 	 */
 	if ((maxmem != 0) && (passphrased == 0))
 		usage();
+
+	/* Warn the user if they're being silly. */
+	if (keyswanted == 0) {
+		warn0("None of {-r, -w, -d, --nuke} options are specified."
+		    "  This will create a key file with no keys, which is"
+		    " probably not what you intended.");
+	}
 
 	/* Read the specified key files. */
 	while (argc-- > 0) {

@@ -180,6 +180,7 @@ main(int argc, char **argv)
 	bsdtar->nconfigfiles = 0;
 
 	time(&now);
+	bsdtar->creationtime = now;
 
 	if (setlocale(LC_ALL, "") == NULL)
 		bsdtar_warnc(bsdtar, 0, "Failed to set default locale");
@@ -290,6 +291,15 @@ main(int argc, char **argv)
 		case OPTION_CONFIGFILE:
 			bsdtar->configfiles[bsdtar->nconfigfiles++] =
 			    bsdtar->optarg;
+			break;
+		case OPTION_CREATIONTIME: /* tarsnap */
+			errno = 0;
+			bsdtar->creationtime = strtol(bsdtar->optarg,
+			    NULL, 0);
+			if ((errno) || (bsdtar->creationtime == 0))
+				bsdtar_errc(bsdtar, 1, 0,
+				    "Invalid --creationtime argument: %s",
+				    bsdtar->optarg);
 			break;
 		case 'd': /* multitar */
 			set_mode(bsdtar, opt, "-d");
@@ -469,6 +479,9 @@ main(int argc, char **argv)
 		case OPTION_NO_QUIET:
 			optq_push(bsdtar, "no-quiet", NULL);
 			break;
+		case OPTION_NO_RETRY_FOREVER:
+			optq_push(bsdtar, "no-retry-forever", NULL);
+			break;
 		case OPTION_NO_SAME_OWNER: /* GNU tar */
 			bsdtar->extract_flags &= ~ARCHIVE_EXTRACT_OWNER;
 			break;
@@ -530,6 +543,9 @@ main(int argc, char **argv)
 			break;
 		case OPTION_RECOVER:
 			set_mode(bsdtar, opt, "--recover");
+			break;
+		case OPTION_RETRY_FOREVER:
+			optq_push(bsdtar, "retry-forever", NULL);
 			break;
 		case OPTION_SNAPTIME: /* multitar */
 			optq_push(bsdtar, "snaptime", bsdtar->optarg);
@@ -635,7 +651,7 @@ main(int argc, char **argv)
 	 * is included in the metadata.
 	 */
 	if (bsdtar->option_dryrun && (bsdtar->ntapes == 0))
-		bsdtar->tapenames[bsdtar->ntapes++] = "";
+		bsdtar->tapenames[bsdtar->ntapes++] = "(dry-run)";
 
 	/* At this point we must have a mode set. */
 	if (bsdtar->mode == '\0')
@@ -698,7 +714,8 @@ main(int argc, char **argv)
 		bsdtar_errc(bsdtar, 1, 0,
 		    "Cannot create an archive with an empty name");
 	if ((bsdtar->cachedir == NULL) &&
-	    (bsdtar->mode == 'c' || bsdtar->mode == 'd' ||
+	    (((bsdtar->mode == 'c') && (!bsdtar->option_dryrun)) ||
+	     bsdtar->mode == 'd' ||
 	     bsdtar->mode == OPTION_RECOVER ||
 	     bsdtar->mode == OPTION_FSCK ||
 	     bsdtar->mode == OPTION_FSCK_PRUNE ||
@@ -709,9 +726,11 @@ main(int argc, char **argv)
 	if (tarsnap_opt_aggressive_networking != 0) {
 		if ((bsdtar->bwlimit_rate_up != 0) ||
 		    (bsdtar->bwlimit_rate_down != 0)) {
-			bsdtar_errc(bsdtar, 1, 0,
+			bsdtar_warnc(bsdtar, 0,
 			    "--aggressive-networking is incompatible with"
-			    " --maxbw-rate options");
+			    " --maxbw-rate options;\n"
+			    "         disabling --aggressive-networking");
+			tarsnap_opt_aggressive_networking = 0;
 		}
 	}
 
@@ -805,9 +824,25 @@ main(int argc, char **argv)
 	}
 
 	/* Make sure we have whatever keys we're going to need. */
-	if (bsdtar->have_keys == 0)
-		bsdtar_errc(bsdtar, 1, 0,
-		    "Keys must be provided via --keyfile option");
+	if (bsdtar->have_keys == 0) {
+		if (!bsdtar->option_dryrun) {
+			bsdtar_errc(bsdtar, 1, 0,
+			    "Keys must be provided via --keyfile option");
+		} else {
+			if (bsdtar->cachedir != NULL) {
+				bsdtar_errc(bsdtar, 1, 0,
+				    "Option mismatch for --dry-run: cachedir"
+				    " specified but no keyfile");
+			}
+			if (crypto_keys_generate(CRYPTO_KEYMASK_USER))
+				bsdtar_errc(bsdtar, 1, 0,
+				    "Error generating keys");
+			bsdtar_warnc(bsdtar, 0,
+			    "Performing dry-run archival without keys\n"
+			    "         (sizes may be slightly inaccurate)");
+		}
+	}
+
 	missingkey = NULL;
 	switch (bsdtar->mode) {
 	case 'c':
@@ -980,7 +1015,7 @@ static void
 version(void)
 {
 	printf("tarsnap %s\n", PACKAGE_VERSION);
-	exit(1);
+	exit(0);
 }
 
 static const char *long_help_msg =
@@ -1129,6 +1164,7 @@ configfile_helper(struct bsdtar *bsdtar, const char *line)
 	char * conf_arg;
 	size_t optlen;
 	char * conf_arg_malloced;
+	size_t len;
 
 	/* Skip any leading whitespace. */
 	while ((line[0] == ' ') || (line[0] == '\t'))
@@ -1141,6 +1177,19 @@ configfile_helper(struct bsdtar *bsdtar, const char *line)
 	/* Duplicate line. */
 	if ((conf_opt = strdup(line)) == NULL)
 		bsdtar_errc(bsdtar, 1, errno, "Out of memory");
+
+	/*
+	 * Detect any trailing whitespace.  This could happen before string
+	 * duplication, but to reduce the number of diffs to a later version,
+	 * we'll do it here.
+	 */
+	len = strlen(conf_opt);
+	if ((len > 0) &&
+	    ((conf_opt[len - 1] == ' ') || (conf_opt[len - 1] == '\t'))) {
+		bsdtar_warnc(bsdtar, 0,
+		    "option contains trailing whitespace; future behaviour"
+		    " may change for:\n    %s", line);
+	}
 
 	/* Split line into option and argument if possible. */
 	optlen = strcspn(conf_opt, " \t");
@@ -1448,6 +1497,11 @@ dooption(struct bsdtar *bsdtar, const char * conf_opt,
 			goto optset;
 
 		bsdtar->option_quiet_set = 1;
+	} else if (strcmp(conf_opt, "no-retry-forever") == 0) {
+		if (bsdtar->option_retry_forever_set)
+			goto optset;
+
+		bsdtar->option_retry_forever_set = 1;
 	} else if (strcmp(conf_opt, "no-snaptime") == 0) {
 		if (bsdtar->option_snaptime_set)
 			goto optset;
@@ -1477,6 +1531,12 @@ dooption(struct bsdtar *bsdtar, const char * conf_opt,
 
 		bsdtar->option_quiet = 1;
 		bsdtar->option_quiet_set = 1;
+	} else if (strcmp(conf_opt, "retry-forever") == 0) {
+		if (bsdtar->option_retry_forever_set)
+			goto optset;
+
+		tarsnap_opt_retry_forever = 1;
+		bsdtar->option_retry_forever_set = 1;
 	} else if (strcmp(conf_opt, "snaptime") == 0) {
 		if (bsdtar->mode != 'c')
 			goto badmode;
